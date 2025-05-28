@@ -13,6 +13,7 @@ composer require open-southeners/laravel-scim
 
 - [ ] Add Patch operations: https://datatracker.ietf.org/doc/html/draft-ietf-scim-api-19#section-3.5.2
 - [ ] Add ETag support (resource versioning): https://datatracker.ietf.org/doc/html/draft-ietf-scim-api-19#section-3.14
+- [ ] Add query filters support (lists): https://datatracker.ietf.org/doc/html/draft-ietf-scim-api-19#section-3.4.2.2
 
 ## Partners
 
