@@ -1,0 +1,26 @@
+providers:
+    - OpenSoutheners\LaravelScim\ServiceProvider
+    - Workbench\App\Providers\WorkbenchServiceProvider
+
+migrations:
+    - workbench/database/migrations
+
+seeders:
+    - Workbench\Database\Seeders\DatabaseSeeder
+
+workbench:
+    start: "/"
+    install: true
+    welcome: false
+    discovers:
+        web: true
+        api: true
+        commands: false
+        views: false
+        factories: true
+        config: true
+    build:
+        - create-sqlite-db
+        - migrate:refresh
+    assets: []
+    sync: []

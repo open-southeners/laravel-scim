@@ -1,23 +1,18 @@
-title_goes_here [![required php version](https://img.shields.io/packagist/php-v/open-southeners/packagist_package_here)](https://www.php.net/supported-versions.php) [![codecov](https://codecov.io/gh/open-southeners/packagist_package_here/branch/main/graph/badge.svg?token=codecov_badge_token)](https://codecov.io/gh/open-southeners/packagist_package_here) [![Edit on VSCode online](https://img.shields.io/badge/vscode-edit%20online-blue?logo=visualstudiocode)](https://vscode.dev/github/open-southeners/packagist_package_here)
+Laravel SCIM [![required php version](https://img.shields.io/packagist/php-v/open-southeners/laravel-scim)](https://www.php.net/supported-versions.php) [![codecov](https://codecov.io/gh/open-southeners/laravel-scim/branch/main/graph/badge.svg?token=codecov_badge_token)](https://codecov.io/gh/open-southeners/laravel-scim) [![Edit on VSCode online](https://img.shields.io/badge/vscode-edit%20online-blue?logo=visualstudiocode)](https://vscode.dev/github/open-southeners/laravel-scim)
 ===
 
-and_description_here
-
-**Search & replace:**
-
-| Keys                                                      | Replacement                                                   |
-| --------------------------------------------------------- | ------------------------------------------------------------- |
-| `title_goes_here`                                         | Fancy title from the repository (only README and stuff)       |
-| `and_description_here`                                    | Short package description (only for README and composer.json) |
-| `packagist_package_here`                                  | Packagist (composer) published package name                   |
-| `codecov_badge_token`                                           | Codecov token for the coverage badge                          |
-| `OpenSoutheners\PhpPackage`, `OpenSoutheners\\PhpPackage` | PSR-0 and PSR-4 complaint package namespace                   |
+Integrate your Laravel application to the SCIM v2 specification
 
 ## Getting started
 
 ```
-composer require open-southeners/packagist_package_here
+composer require open-southeners/laravel-scim
 ```
+
+### Roadmap
+
+- [ ] Add Patch operations: https://datatracker.ietf.org/doc/html/draft-ietf-scim-api-19#section-3.5.2
+- [ ] Add ETag support (resource versioning): https://datatracker.ietf.org/doc/html/draft-ietf-scim-api-19#section-3.14
 
 ## Partners
 
