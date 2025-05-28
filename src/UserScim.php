@@ -28,14 +28,19 @@ class UserScim extends ScimObject
         $this->id = $id ?? '';
         $this->externalId = $externalId ?? '';
 
-        $this->meta = [
+        $meta = [
             'resourceType' => 'User',
-            'location' => route('scim.v2.Users.show', $this->id),
             // TODO: Optional implementation
             // 'version' => '',
             'created' => ($created ?: now())->toIso8601ZuluString(),
             'lastModified' => ($lastModified ?: now())->toIso8601ZuluString(),
         ];
+
+        if ($this->id) {
+            $meta['location'] = route('scim.v2.Users.show', $this->id);
+        }
+
+        $this->meta = $meta;
     }
 
     /**
