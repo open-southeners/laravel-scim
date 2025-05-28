@@ -62,7 +62,7 @@ class SCIM
             return new $mapper(
                 $request->route() && $request->route()->hasParameter('user')
                     ? $model::findOrFail($request->route('user'))
-                    : $model::simplePaginate()->items()
+                    : $model::query()->simplePaginate()->items()
             );
         });
 
