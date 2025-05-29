@@ -12,8 +12,6 @@ return [
 
     'middleware' => [],
 
-    'route_prefix' => 'scim/v2',
-
     'route_as' => 'scim.v2.',
 
     'bulk' => [

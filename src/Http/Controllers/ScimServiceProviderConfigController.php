@@ -27,12 +27,12 @@ class ScimServiceProviderConfigController
             ],
             'bulk' => [
                 'supported' => false,
-                'maxPayloadSize' => config('scim.bulk.maxPayloadSize'),
-                'maxOperations' => config('scim.bulk.maxOperations'),
+                'maxPayloadSize' => config('scim.bulk.maxPayloadSize', 4194304),
+                'maxOperations' => config('scim.bulk.maxOperations', 10),
             ],
             'filter' => [
                 'supported' => false,
-                'maxResults' => config('scim.filter.maxResults'),
+                'maxResults' => config('scim.filter.maxResults', 10),
             ],
             'changePassword' => [
                 'supported' => true,
