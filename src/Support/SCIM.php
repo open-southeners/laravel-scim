@@ -3,13 +3,12 @@
 namespace OpenSoutheners\LaravelScim\Support;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use OpenSoutheners\LaravelScim\Contracts;
+use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
 use OpenSoutheners\LaravelScim\Enums\ScimBadRequestErrorType;
 use OpenSoutheners\LaravelScim\Exceptions\ScimErrorException;
-use OpenSoutheners\LaravelScim\Features;
 use OpenSoutheners\LaravelScim\Http\Resources;
 
 class SCIM
@@ -20,14 +19,6 @@ class SCIM
     public static function contentTypeHeader(): string
     {
         return 'application/scim+json';
-    }
-
-    /**
-     * Check if feature is enabled and supported by application.
-     */
-    public static function featureEnabled(Features $feature): bool
-    {
-        return in_array($feature, config('scim.features'));
     }
 
     /**
@@ -120,5 +111,22 @@ class SCIM
             perPage: $request->query('count'),
             page: $request->query('startIndex')
         );
+    }
+
+    /**
+     * Register SCIM supported authentication schemes.
+     *
+     * @param ScimAuthenticationScheme ...$schemes
+     * @return array<ScimAuthenticationScheme>
+     */
+    public static function authenticationSchemes(...$schemes): array
+    {
+        if (!$schemes) {
+            return app()->make('scim.authentication.schemes') ?? [];
+        }
+
+        app()->bind('scim.authentication.schemes', fn () => $schemes);
+
+        return $schemes;
     }
 }

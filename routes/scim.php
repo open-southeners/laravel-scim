@@ -5,12 +5,12 @@ use OpenSoutheners\LaravelScim\Actions;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
-    'prefix' => config('scim.route_prefix', 'scim/v2'),
+    'prefix' => 'scim/v2',
     'middleware' => config('scim.middleware', ['web']),
-    'as' => config('scim.route_as', 'scim.v2.'),
+    'as' => 'scim.v2.',
 ], function () {
-    Route::get('ServiceProviderConfig', Controllers\ScimServiceProviderConfigController::class);
-    Route::get('ResourceTypes', Controllers\ScimResourceTypeController::class);
+    Route::get('ServiceProviderConfig', Controllers\ScimServiceProviderConfigController::class)->name('ServiceProviderConfig');
+    Route::get('ResourceTypes', Controllers\ScimResourceTypeController::class)->name('ResourceTypes');
 
     Route::apiResource('Schemas', Controllers\ScimSchemaController::class)
         ->only(['index', 'show']);

@@ -3,6 +3,7 @@
 namespace Workbench\App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
 use OpenSoutheners\LaravelScim\Support\SCIM;
 use Workbench\App\Actions\User\CreateUserFromScim;
 use Workbench\App\Actions\User\UpdateUserFromScimPutAction;
@@ -24,6 +25,8 @@ class WorkbenchServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        SCIM::authenticationSchemes(ScimAuthenticationScheme::OAuthBearerToken);
+
         SCIM::user(
             model: User::class,
             putAction: UpdateUserFromScimPutAction::class,

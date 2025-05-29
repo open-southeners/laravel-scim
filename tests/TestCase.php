@@ -11,4 +11,15 @@ abstract class TestCase extends \Orchestra\Testbench\TestCase
 {
     use WithWorkbench;
     use RefreshDatabase;
+
+    /**
+     * Define environment setup.
+     *
+     * @param  \Illuminate\Foundation\Application  $app
+     * @return void
+     */
+    protected function defineEnvironment($app)
+    {
+        $app['config']->set('scim', include_once __DIR__.'/../config/scim.php');
+    }
 }
