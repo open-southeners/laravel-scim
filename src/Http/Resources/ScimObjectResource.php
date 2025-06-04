@@ -3,11 +3,8 @@
 namespace OpenSoutheners\LaravelScim\Http\Resources;
 
 use Exception;
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use OpenSoutheners\LaravelScim\ScimObject;
-use OpenSoutheners\LaravelScim\Support\SCIM;
 
 class ScimObjectResource extends JsonResource
 {
@@ -17,14 +14,6 @@ class ScimObjectResource extends JsonResource
      * @var string|null
      */
     public static $wrap = null;
-
-    /**
-     * Customize the outgoing response for the resource.
-     */
-    public function withResponse(Request $request, JsonResponse $response): void
-    {
-        $response->header('Content-Type', SCIM::contentTypeHeader());
-    }
 
     /**
      * Create a new resource collection instance.
@@ -45,8 +34,12 @@ class ScimObjectResource extends JsonResource
      */
     public function toArray($request)
     {
-        if (!$this->resource instanceof ScimObject) {
-            throw new Exception('API resource cannot be serialised to SCIM schema object');
+        if (is_array($this->resource)) {
+            return $this->resource;
+        }
+
+        if (!$this->resource instanceof Arrayable) {
+            throw new Exception('API resource cannot be serialised to a schema JSON object');
         }
 
         return $this->resource->toArray();

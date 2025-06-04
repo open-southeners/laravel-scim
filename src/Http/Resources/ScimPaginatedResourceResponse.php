@@ -2,6 +2,7 @@
 
 namespace OpenSoutheners\LaravelScim\Http\Resources;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Resources\Json\PaginatedResourceResponse;
 
 class ScimPaginatedResourceResponse extends PaginatedResourceResponse
@@ -16,17 +17,17 @@ class ScimPaginatedResourceResponse extends PaginatedResourceResponse
     {
         $paginated = $this->resource->resource->toArray();
 
-        $default = [
-            'totalResults' => count($paginated['data']),
+        $defaults = [
+            'totalResults' => $this->resource->resource instanceof LengthAwarePaginator ? $this->resource->resource->total() : count($paginated['data']),
             'itemsPerPage' => $paginated['per_page'],
             'startIndex' => $paginated['from'],
         ];
 
         if (method_exists($this->resource, 'paginationInformation') ||
             $this->resource->hasMacro('paginationInformation')) {
-            return $this->resource->paginationInformation($request, $paginated, $default);
+            return $this->resource->paginationInformation($request, $paginated, $defaults);
         }
 
-        return $default;
+        return $defaults;
     }
 }

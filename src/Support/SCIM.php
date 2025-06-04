@@ -2,72 +2,50 @@
 
 namespace OpenSoutheners\LaravelScim\Support;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
-use OpenSoutheners\LaravelScim\Contracts;
 use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
 use OpenSoutheners\LaravelScim\Enums\ScimBadRequestErrorType;
 use OpenSoutheners\LaravelScim\Exceptions\ScimErrorException;
-use OpenSoutheners\LaravelScim\Http\Resources;
 
 class SCIM
 {
-    /**
-     * Get Content-Type header value for SCIM specification.
-     */
-    public static function contentTypeHeader(): string
+    public static function schemaUri(string $suffix): string
     {
-        return 'application/scim+json';
+        return 'urn:ietf:params:scim:schemas:core:2.0:'.$suffix;
     }
 
     /**
-     * Get SCIM schema configuration for entity.
+     * Paginate query builder using SCIM query parameters from request.
+     *
+     * @param class-string<\OpenSoutheners\LaravelScim\ScimSchema> $schema
      */
-    public static function schemas(?string $id = null)
+    public static function paginateQuery(Builder $query, Request $request, string $schema): LengthAwarePaginator
     {
-        $schemas = [
-            'urn:ietf:params:scim:schemas:core:2.0:User' => Resources\UserSchemaScimResource::class,
-            'urn:ietf:params:scim:schemas:core:2.0:Role' => Resources\RoleSchemaScimResource::class,
-        ];
+        $perPage = intval($request->query('count', 10));
 
-        if ($id && $schema = $schemas[$id] ?? null) {
-            return new $schema();
+        if ($perPage === 0) {
+            $perPage = 10;
         }
 
-        return $schemas;
-    }
+        $startIndex = intval($request->query('startIndex', 1));
 
-    /**
-     * Set user and/or mapper classes.
-     */
-    public static function user(
-        string $model,
-        string $mapper,
-        string $putAction,
-        string $createAction
-    ): void {
-        app()->bind(Contracts\Mappers\UserScimMapper::class, function () use ($model, $mapper) {
-            $request = app(Request::class);
+        $currentPage = intval($startIndex/$perPage+1);
 
-            return new $mapper(
-                $request->route() && $request->route()->hasParameter('user')
-                    ? $model::findOrFail($request->route('user'))
-                    : $model::query()->simplePaginate()->items()
-            );
-        });
+        $total = $query->toBase()->getCountForPagination();
 
-        app()->bind(Contracts\Actions\UserScimPutAction::class, fn () => new $putAction);
-        app()->bind(Contracts\Actions\UserScimCreateAction::class, fn () => new $createAction);
-    }
+        $items = $query->get()->map(fn ($item) => $schema::fromModel($item));
 
-    /**
-     * Set group model and/or mapper classes.
-     */
-    public static function group(string $model, string $mapper): void
-    {
-        app()->bind(Contracts\Models\GroupScimModel::class, fn () => $model);
-        app()->bind(Contracts\Mappers\GroupScimMapper::class, fn () => $mapper);
+        $options = [
+            'path' => $request->path(),
+        ];
+
+        return Container::getInstance()->makeWith(LengthAwarePaginator::class, compact(
+            'items', 'total', 'perPage', 'currentPage', 'options'
+        ));
     }
 
     /**
@@ -101,19 +79,6 @@ class SCIM
     }
 
     /**
-     * Paginate query builder using SCIM query parameters from request.
-     *
-     * @return class-string<\Illuminate\Database\Eloquent\Model>
-     */
-    public static function paginateQuery(Builder $query, Request $request)
-    {
-        return $query->simplePaginate(
-            perPage: $request->query('count'),
-            page: $request->query('startIndex')
-        );
-    }
-
-    /**
      * Register SCIM supported authentication schemes.
      *
      * @param ScimAuthenticationScheme ...$schemes
@@ -122,7 +87,7 @@ class SCIM
     public static function authenticationSchemes(...$schemes): array
     {
         if (!$schemes) {
-            return app()->make('scim.authentication.schemes') ?? [];
+            return app()->bound('scim.authentication.schemes') ? app()->make('scim.authentication.schemes') : [];
         }
 
         app()->bind('scim.authentication.schemes', fn () => $schemes);

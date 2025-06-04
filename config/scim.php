@@ -1,14 +1,6 @@
 <?php
 
-use OpenSoutheners\LaravelScim\GroupScim;
-use OpenSoutheners\LaravelScim\UserScim;
-
 return [
-
-    'schemas' => [
-        'user' => UserScim::class,
-        'group' => GroupScim::class,
-    ],
 
     'middleware' => [],
 

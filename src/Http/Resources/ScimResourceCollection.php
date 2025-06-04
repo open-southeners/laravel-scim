@@ -3,11 +3,16 @@
 namespace OpenSoutheners\LaravelScim\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class ScimResourceCollection extends ResourceCollection
+class ScimResourceCollection extends AnonymousResourceCollection
 {
-    public $collects = ScimObjectResource::class;
+    /**
+     * The "data" wrapper that should be applied.
+     *
+     * @var string|null
+     */
+    public static $wrap = 'Resources';
 
     /**
      * Create a paginate-aware HTTP response.

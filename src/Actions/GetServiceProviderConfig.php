@@ -1,11 +1,11 @@
 <?php
 
-namespace OpenSoutheners\LaravelScim\Http\Controllers;
+namespace OpenSoutheners\LaravelScim\Actions;
 
 use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
 use OpenSoutheners\LaravelScim\Support\SCIM;
 
-class ScimServiceProviderConfigController
+class GetServiceProviderConfig
 {
     public function __invoke()
     {
