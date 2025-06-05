@@ -2,12 +2,15 @@
 
 namespace OpenSoutheners\LaravelScim;
 
+use Illuminate\Database\Eloquent\Model;
 use OpenSoutheners\LaravelScim\Support\SCIM;
 
 final class Repository
 {
     /**
      * Create a new configuration repository.
+     *
+     * @param array<array{schema: class-string<ScimSchema>, model: class-string<Model>}>> $schemas
      */
     public function __construct(protected array $schemas = [])
     {

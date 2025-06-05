@@ -2,20 +2,17 @@
 
 namespace OpenSoutheners\LaravelScim\Actions;
 
-use OpenSoutheners\LaravelScim\Support\SCIM;
+use OpenSoutheners\LaravelScim\Http\Resources\ScimSchemaResourceTypeResource;
+use OpenSoutheners\LaravelScim\Repository;
 
 class ListResourceTypes
 {
-    public function __invoke()
+    public function __invoke(Repository $repository)
     {
-        $schemas = SCIM::getSchemas();
+        $schemas = $repository->all();
 
-        return response()->json([
-            'schemas' => ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
-            'totalResults' => 0,
-            'startIndex' => 1,
-            'itemsPerPage' => 0,
-            'Resources' => [],
-        ]);
+        return ScimSchemaResourceTypeResource::collection(
+            array_values(array_map(fn(array $schema) => $schema['schema'], $schemas))
+        );
     }
 }
