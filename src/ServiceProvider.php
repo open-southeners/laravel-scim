@@ -2,6 +2,7 @@
 
 namespace OpenSoutheners\LaravelScim;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
@@ -34,13 +35,25 @@ class ServiceProvider extends BaseServiceProvider
                 str_singular($request->route()->parameter('schema', ''))
             );
 
+            // Maybe useless...
             $request->route()->setParameter('schemaObject', $schema);
 
             if (!$schema) {
                 abort(404);
             }
 
-            return new SchemaMapper($schema['schema'], $schema['model']::query());
+            /** @var Builder $modelQuery */
+            $modelQuery = $schema['model']::query();
+
+            if ($modelKey = $request->route('id')) {
+                $modelInstance = new $schema['model'];
+
+                $modelQuery = method_exists($modelInstance, 'resolveScimRouteBinding')
+                    ? $modelInstance->resolveScimRouteBinding($modelKey)
+                    : $modelInstance->resolveRouteBinding($modelKey);
+            }
+
+            return new SchemaMapper($schema['schema'], $modelQuery);
         });
     }
 
