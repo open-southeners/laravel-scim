@@ -23,7 +23,7 @@ class GetServiceProviderConfig
                 'urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig',
             ],
             'patch' => [
-                'supported' => false,
+                'supported' => true,
             ],
             'bulk' => [
                 'supported' => false,

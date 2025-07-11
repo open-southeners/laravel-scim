@@ -2,7 +2,9 @@
 
 namespace OpenSoutheners\LaravelScim\Actions\Models;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use OpenSoutheners\LaravelScim\Http\Resources\ScimObjectResource;
 use OpenSoutheners\LaravelScim\SchemaMapper;
 
@@ -12,7 +14,7 @@ final class CreateScimModel
         SchemaMapper $mapper,
         Request $request,
         string $schema,
-    ): ScimObjectResource {
+    ): JsonResponse {
         $data = $mapper->newSchema($request);
 
         $model = $data->toModel();
@@ -23,6 +25,8 @@ final class CreateScimModel
 
         event(event: 'scim.model.created: ' . get_class($model), payload: [$model]);
 
-        return new ScimObjectResource($mapper->newSchema($model));
+        return (new ScimObjectResource($mapper->newSchema($model)))
+            ->toResponse($request)
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 }

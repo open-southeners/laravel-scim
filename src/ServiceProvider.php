@@ -53,6 +53,8 @@ class ServiceProvider extends BaseServiceProvider
                     : $modelInstance->resolveRouteBinding($modelKey);
             }
 
+            abort_unless($modelQuery, 404);
+
             return new SchemaMapper($schema['schema'], $modelQuery);
         });
     }

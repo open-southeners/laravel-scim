@@ -22,8 +22,7 @@ Route::group([
         Route::get('/', Actions\Models\ListModelsForScim::class)->name('index');
         Route::get('{id}', Actions\Models\GetModelForScim::class)->name('show');
         Route::post('/', Actions\Models\CreateScimModel::class)->name('store');
-        Route::put('{id}', Actions\Models\UpdateScimModel::class)->name('update');
-        Route::patch('{id}', Actions\Models\UpdateScimModel::class)->name('update');
-        // Route::delete('{id}', Actions\Models\DeleteScimUser::class)->name('destroy');
+        Route::match(['put', 'patch'], '{id}', Actions\Models\UpdateScimModel::class)->name('update');
+        Route::delete('{id}', Actions\Models\DeleteScimModel::class)->name('destroy');
     });
 });

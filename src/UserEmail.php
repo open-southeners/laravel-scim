@@ -8,8 +8,8 @@ readonly class UserEmail implements Arrayable
 {
     public function __construct(
         public string $value,
-        public string $type,
-        public bool $primary,
+        public ?string $type = null,
+        public bool $primary = true,
     ) {
         //
     }
