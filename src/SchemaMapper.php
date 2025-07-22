@@ -110,8 +110,6 @@ final class SchemaMapper implements Responsable
             };
         }
 
-        // dd($data);
-
         return $data;
     }
 
@@ -123,7 +121,7 @@ final class SchemaMapper implements Responsable
 
         $data = $request->input();
 
-        $isPatchOp = in_array('urn:ietf:params:scim:api:messages:2.0:PatchOp', $request->input('schemas'));
+        $isPatchOp = in_array('urn:ietf:params:scim:api:messages:2.0:PatchOp', $request->input('schemas', []));
 
         if ($isPatchOp) {
             $data = $this->extractDataFromPatchOp($request);
@@ -167,11 +165,18 @@ final class SchemaMapper implements Responsable
             }
         }
 
-        // dd($data);
         $validatedData = Validator::validate($data, $rulesFromSchema);
 
-        // dd($validatedData);
         return new $this->schema(...$validatedData);
+    }
+
+    public function updateSchema(): ScimSchema
+    {
+        if ($input instanceof Request) {
+            return $this->fromRequest($input);
+        }
+
+        return $this->schema::fromModel($input);
     }
 
     public function newSchema(Request|Model $input): ScimSchema
