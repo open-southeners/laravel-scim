@@ -15,7 +15,13 @@ final class UpdateScimModel
     ) {
         $data = $mapper->newSchema($request);
 
-        $mapper->getResult()->update($data->toModel()->getAttributes());
+        $model = $data->toModel();
+
+        event(event: 'scim.model.updating: ' . get_class($model), payload: [$model, $data]);
+
+        $mapper->getResult()->update($model->getAttributes());
+
+        event(event: 'scim.model.updated: ' . get_class($model), payload: [$model, $data]);
 
         return $data;
     }

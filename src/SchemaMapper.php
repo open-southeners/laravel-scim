@@ -101,7 +101,7 @@ final class SchemaMapper implements Responsable
 
         foreach ($operations as $operation) {
             // TODO: Implement add operation with model data recovery (addition / removal)
-            $attributeOperation = ScimPatchOp::from($operation['op']);
+            $attributeOperation = ScimPatchOp::from(strtolower($operation['op']));
 
             $data = match ($attributeOperation) {
                 ScimPatchOp::Add => $this->addValueToPath($data, $operation['path'], $operation['value']),

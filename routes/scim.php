@@ -6,7 +6,7 @@ use OpenSoutheners\LaravelScim\Http\Middleware\ScimResponse;
 
 Route::group([
     'prefix' => 'scim/v2',
-    'middleware' => array_merge(config('scim.middleware', []), [ScimResponse::class]),
+    'middleware' => array_merge([ScimResponse::class], config('scim.middleware', [])),
     'as' => 'scim.v2.',
 ], function () {
     Route::get('ServiceProviderConfig', Actions\GetServiceProviderConfig::class)->name('ServiceProviderConfig');

@@ -23,7 +23,7 @@ final class CreateScimModel
 
         $model->save();
 
-        event(event: 'scim.model.created: ' . get_class($model), payload: [$model]);
+        event(event: 'scim.model.created: ' . get_class($model), payload: [$model, $data]);
 
         return (new ScimObjectResource($mapper->newSchema($model)))
             ->toResponse($request)
