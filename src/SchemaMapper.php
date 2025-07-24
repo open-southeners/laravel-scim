@@ -170,15 +170,6 @@ final class SchemaMapper implements Responsable
         return new $this->schema(...$validatedData);
     }
 
-    public function updateSchema(): ScimSchema
-    {
-        if ($input instanceof Request) {
-            return $this->fromRequest($input);
-        }
-
-        return $this->schema::fromModel($input);
-    }
-
     public function newSchema(Request|Model $input): ScimSchema
     {
         if ($input instanceof Request) {
