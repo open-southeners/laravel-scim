@@ -61,7 +61,7 @@ abstract readonly class ScimSchema implements Arrayable
             }
 
             // TODO: Accepts isn't taking in mind the collected types (generics)
-            if ($parentType->accepts($value) && !$parentType instanceof Type\CollectionType) {
+            if (!$parentType || ($parentType->accepts($value) && !$parentType instanceof Type\CollectionType)) {
                 $this->{$arg->getName()} = $value;
 
                 continue;
