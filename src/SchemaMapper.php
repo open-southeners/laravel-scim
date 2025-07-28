@@ -52,6 +52,15 @@ final class SchemaMapper implements Responsable
         return $this->query->first();
     }
 
+    public function getModel(): string
+    {
+        if ($this->query instanceof Model) {
+            return $this->query;
+        }
+
+        return get_class($this->query->getModel());
+    }
+
     /**
      * Get the response from the current query.
      *
@@ -168,6 +177,11 @@ final class SchemaMapper implements Responsable
         $validatedData = Validator::validate($data, $rulesFromSchema);
 
         return new $this->schema(...$validatedData);
+    }
+
+    public function getSchema(): string
+    {
+        return $this->schema;
     }
 
     public function newSchema(Request|Model $input): ScimSchema
