@@ -17,13 +17,10 @@ final class DeleteScimModel
     ): Response {
         $model = $mapper->getResult();
 
-        Gate::authorize('scim.'.get_class($model).'.delete', [$request->user(), $model]);
+        Gate::forUser($request->user())
+            ->authorize('scim.'.$model->getTable().'.delete', [$model]);
 
         event(event: 'scim.model.deleting: ' . get_class($model), payload: [$model]);
-
-        $model->delete();
-
-        event(event: 'scim.model.deleted: ' . get_class($model));
 
         return response()->noContent();
     }
