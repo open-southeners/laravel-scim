@@ -19,7 +19,8 @@ class ListModelsForScim
     ) {
         $schemaClass = $scim->getBySuffix(Str::singular($schema))['schema'];
 
-        Gate::authorize('scim.viewAny', [$schemaClass, $request->user()]);
+        Gate::forUser($request->user())
+            ->authorize('scim.'.(new ($mapper->getModel()))->getTable().'.viewAny');
 
         return $mapper->applyQuery(fn ($query) =>
             app(ApplyScimFiltersToQuery::class)->handle($query, $request, $schemaClass)

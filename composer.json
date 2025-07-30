@@ -20,7 +20,8 @@
     ],
     "require": {
         "php": "^8.2",
-        "symfony/property-info": "^7.3"
+        "symfony/property-info": "^7.3",
+        "phpdocumentor/type-resolver": "^1.10"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
