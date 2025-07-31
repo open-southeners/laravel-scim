@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
+use Illuminate\Support\Str;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -32,7 +33,7 @@ class ServiceProvider extends BaseServiceProvider
             $request = $app->make(Request::class);
 
             $schema = $app->make(Repository::class)->getBySuffix(
-                str_singular($request->route()->parameter('schema', ''))
+                Str::singular($request->route()->parameter('schema', ''))
             );
 
             // Maybe useless...

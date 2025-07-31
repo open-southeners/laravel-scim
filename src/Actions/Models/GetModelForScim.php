@@ -15,8 +15,12 @@ final class GetModelForScim
         string $id,
     ) {
         Gate::forUser($request->user())
-            ->authorize('scim.'.(new ($mapper->getModel()))->getTable().'.view', [$request->user(), $id]);
+            ->authorize('scim.'.(new ($mapper->getModel()))->getTable().'.view', [$id]);
 
-        return $mapper->applyQuery(fn ($query) => $query->where('id', intval($id)));
+        return $mapper->applyQuery(function ($query) use ($schema, $id) {
+            $schema::query($query);
+
+            $query->where('id', intval($id));
+        });
     }
 }

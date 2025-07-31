@@ -10,6 +10,7 @@ class ApplyScimFiltersToQuery
 {
     /**
      * @param Builder $query
+     * @param class-string<\OpenSoutheners\LaravelScim\ScimSchema> $schema
      */
     public function handle($query, Request $request, string $schema): void
     {

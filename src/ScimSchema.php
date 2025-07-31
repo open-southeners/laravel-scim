@@ -4,10 +4,8 @@ namespace OpenSoutheners\LaravelScim;
 
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use InvalidArgumentException;
 use OpenSoutheners\LaravelScim\SchemaMeta;
 use ReflectionClass;
 use Symfony\Component\PropertyInfo\Extractor\PhpStanExtractor;
@@ -33,6 +31,8 @@ abstract readonly class ScimSchema implements Arrayable
 
     abstract public static function getSchemaUrns(): array;
 
+    abstract public static function query(Builder $query): void;
+
     protected function fill(...$argValues): void
     {
         $reflectionClass = new ReflectionClass($this);
@@ -55,6 +55,10 @@ abstract readonly class ScimSchema implements Arrayable
                 $arg->getName(),
                 [$arg->getName() => $value]
             );
+
+            // if (! $reflectionClass->getParentClass()->hasProperty($arg->getName())) {
+            //     continue;
+            // }
 
             if ($parentType instanceof Type\NullableType) {
                 $parentType = $parentType->getWrappedType();

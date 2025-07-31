@@ -22,8 +22,10 @@ class ListModelsForScim
         Gate::forUser($request->user())
             ->authorize('scim.'.(new ($mapper->getModel()))->getTable().'.viewAny');
 
-        return $mapper->applyQuery(fn ($query) =>
-            app(ApplyScimFiltersToQuery::class)->handle($query, $request, $schemaClass)
-        );
+        return $mapper->applyQuery(function ($query) use ($request, $schemaClass) {
+            $schemaClass::query($query);
+
+            app(ApplyScimFiltersToQuery::class)->handle($query, $request, $schemaClass);
+        });
     }
 }
