@@ -2,6 +2,7 @@
 
 namespace OpenSoutheners\LaravelScim\Schemas;
 
+use Illuminate\Database\Eloquent\Builder;
 use OpenSoutheners\LaravelScim\ScimSchema;
 use OpenSoutheners\LaravelScim\UserEmail;
 use OpenSoutheners\LaravelScim\UserRole;
@@ -39,5 +40,10 @@ readonly class UserScimSchema extends ScimSchema
     public static function getSchemaDescription(): string
     {
         return 'User schema';
+    }
+
+    public static function query(Builder $query): void
+    {
+        //
     }
 }

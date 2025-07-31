@@ -38,7 +38,7 @@ final class SchemaMapper implements Responsable
      */
     public function applyQuery(\Closure $callback)
     {
-        $this->query->beforeQuery($callback);
+        $callback($this->query);
 
         return $this;
     }

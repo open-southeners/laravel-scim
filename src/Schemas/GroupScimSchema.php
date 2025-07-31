@@ -2,6 +2,7 @@
 
 namespace OpenSoutheners\LaravelScim\Schemas;
 
+use Illuminate\Database\Eloquent\Builder;
 use OpenSoutheners\LaravelScim\ScimSchema;
 
 readonly class GroupScimSchema extends ScimSchema
@@ -23,5 +24,10 @@ readonly class GroupScimSchema extends ScimSchema
     public static function getSchemaDescription(): string
     {
         return 'Group schema';
+    }
+
+    public static function query(Builder $query): void
+    {
+        //
     }
 }
