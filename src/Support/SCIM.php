@@ -4,12 +4,14 @@ namespace OpenSoutheners\LaravelScim\Support;
 
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
 use OpenSoutheners\LaravelScim\Enums\ScimBadRequestErrorType;
 use OpenSoutheners\LaravelScim\Exceptions\ScimErrorException;
+use OpenSoutheners\LaravelScim\Http\Resources\JsonScimErrorResource;
 
 class SCIM
 {
@@ -93,5 +95,24 @@ class SCIM
         app()->bind('scim.authentication.schemes', fn () => $schemes);
 
         return $schemes;
+    }
+
+    public static function integrate(Exceptions $exceptions)
+    {
+        $exceptions->shouldRenderJsonWhen(fn ($request, $e) => $request->wantsJson() || $request->routeIs('scim.v2.*'));
+
+        /**
+         * @param  \Illuminate\Http\Request  $request
+         * @param  \Symfony\Component\HttpFoundation\Response  $response
+         * @param  \Throwable  $e
+         * @return \Symfony\Component\HttpFoundation\Response
+         */
+        $exceptions->respond(function ($response, $e, $request) {
+            if ($request->routeIs('scim.v2.*')) {
+                return new JsonScimErrorResource($e);
+            }
+
+            return $response;
+        });
     }
 }

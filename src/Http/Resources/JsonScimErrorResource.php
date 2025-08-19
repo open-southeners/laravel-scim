@@ -24,8 +24,6 @@ class JsonScimErrorResource extends JsonResource
      */
     public function withResponse(Request $request, JsonResponse $response): void
     {
-        $response->header('Content-Type', SCIM::contentTypeHeader());
-
         $response->setStatusCode(
             match (true) {
                 $this->resource instanceof ValidationException => 400,
@@ -48,12 +46,12 @@ class JsonScimErrorResource extends JsonResource
     public function toArray($request)
     {
         [$scimType, $errorCode, $detail] = match (true) {
-            $this->resource instanceof ValidationException => ['invalidSyntax', 0, ''],
-            $this->resource instanceof DuplicatedPostScimRecord => [null, 0, 'Trying to create a duplicated resource.'],
-            $this->resource instanceof AuthenticationException => [null, 5003, 'Not authenticated'],
-            $this->resource instanceof RecordsNotFoundException => [null, null, 'Specified resource (e.g., User) or endpoint, does not exist.'],
-            $this->resource instanceof AuthorizationException, $this->resource instanceof AccessDeniedHttpException => [null, 6008, 'Not found or authorized'],
-            default => [null, 0, 'Unknown error, please try again later.'],
+            $this->resource instanceof ValidationException => ['invalidSyntax', 422, ''],
+            $this->resource instanceof DuplicatedPostScimRecord => [null, 422, 'Trying to create a duplicated resource.'],
+            $this->resource instanceof AuthenticationException => [null, 401, 'Not authenticated'],
+            $this->resource instanceof RecordsNotFoundException => [null, 404, 'Specified resource (e.g., User) or endpoint, does not exist.'],
+            $this->resource instanceof AuthorizationException, $this->resource instanceof AccessDeniedHttpException => [null, 403, 'Not found or authorized'],
+            default => [null, 500, 'Unknown error, please try again later.'],
         };
 
         if ($this->resource instanceof ValidationException) {
@@ -70,7 +68,7 @@ class JsonScimErrorResource extends JsonResource
             'schemas' => 'urn:ietf:params:scim:api:messages:2.0:Error',
             $this->mergeWhen(!is_null($scimType), fn() => ['scimType' => $scimType]),
             'detail' => $detail,
-            $this->mergeWhen(!is_null($errorCode), fn() => ['errorCode' => $errorCode]),
+            $this->mergeWhen(!is_null($errorCode), fn() => ['status' => $errorCode]),
         ];
     }
 }

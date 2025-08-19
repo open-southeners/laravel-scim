@@ -38,7 +38,7 @@ final class SchemaMapper implements Responsable
      */
     public function applyQuery(\Closure $callback)
     {
-        $callback($this->query);
+        $callback($this->query instanceof Model ? $this->query->newQuery() : $this->query);
 
         return $this;
     }
@@ -52,13 +52,13 @@ final class SchemaMapper implements Responsable
         return $this->query->first();
     }
 
-    public function getModel(): string
+    public function getModel(): Model
     {
         if ($this->query instanceof Model) {
             return $this->query;
         }
 
-        return get_class($this->query->getModel());
+        return $this->query->getModel();
     }
 
     /**

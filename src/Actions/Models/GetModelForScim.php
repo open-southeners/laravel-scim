@@ -4,6 +4,8 @@ namespace OpenSoutheners\LaravelScim\Actions\Models;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+use OpenSoutheners\LaravelScim\Repository;
 use OpenSoutheners\LaravelScim\SchemaMapper;
 
 final class GetModelForScim
@@ -13,12 +15,15 @@ final class GetModelForScim
         SchemaMapper $mapper,
         string $schema,
         string $id,
+        Repository $scim,
     ) {
-        Gate::forUser($request->user())
-            ->authorize('scim.'.(new ($mapper->getModel()))->getTable().'.view', [$id]);
+        $schemaClass = $scim->getBySuffix(Str::singular($schema))['schema'];
 
-        return $mapper->applyQuery(function ($query) use ($schema, $id) {
-            $schema::query($query);
+        Gate::forUser($request->user())
+            ->authorize('scim.' . $mapper->getModel()->getTable() . '.view', [$id]);
+
+        return $mapper->applyQuery(function ($query) use ($schemaClass, $id) {
+            $schemaClass::query($query);
 
             $query->where('id', intval($id));
         });

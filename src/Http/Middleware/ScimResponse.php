@@ -15,6 +15,8 @@ class ScimResponse
      */
     public function handle($request, Closure $next)
     {
+        $request->headers->set('Accept', 'application/json');
+
         return tap($next($request), function ($response) {
             $response->header('Content-Type', 'application/scim+json');
             $response->header('X-Scim-Response', 'true');
