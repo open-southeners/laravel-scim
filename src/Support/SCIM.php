@@ -2,9 +2,11 @@
 
 namespace OpenSoutheners\LaravelScim\Support;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +14,8 @@ use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
 use OpenSoutheners\LaravelScim\Enums\ScimBadRequestErrorType;
 use OpenSoutheners\LaravelScim\Exceptions\ScimErrorException;
 use OpenSoutheners\LaravelScim\Http\Resources\JsonScimErrorResource;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class SCIM
 {
@@ -99,7 +103,9 @@ class SCIM
 
     public static function integrate(Exceptions $exceptions)
     {
-        $exceptions->shouldRenderJsonWhen(fn ($request, $e) => $request->wantsJson() || $request->routeIs('scim.v2.*'));
+        $exceptions->shouldRenderJsonWhen(fn($request, $e) => $request->wantsJson() || $request->routeIs('scim.v2.*'));
+
+        $exceptions->dontReport(ScimErrorException::class);
 
         /**
          * @param  \Illuminate\Http\Request  $request
@@ -109,7 +115,20 @@ class SCIM
          */
         $exceptions->respond(function ($response, $e, $request) {
             if ($request->routeIs('scim.v2.*')) {
-                return new JsonScimErrorResource($e);
+                return match (true) {
+                    $e instanceof ScimErrorException => $response,
+                        $e instanceof AuthenticationException => new JsonResponse([
+                            'schemas' => ScimErrorException::SCIM_SCHEMAS,
+                            'status' => Response::HTTP_UNAUTHORIZED,
+                            'detail' => 'Not authenticated or authorized',
+                        ], Response::HTTP_UNAUTHORIZED),
+                        $e instanceof HttpException => new JsonResponse([
+                            'schemas' => ScimErrorException::SCIM_SCHEMAS,
+                            'status' => (string) $e->getStatusCode(),
+                            'detail' => $e->getMessage(),
+                        ], $e->getStatusCode()),
+                        default => $response,
+                };
             }
 
             return $response;

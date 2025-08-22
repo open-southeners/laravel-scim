@@ -10,13 +10,13 @@ use Throwable;
 
 class ScimErrorException extends Exception
 {
-    public array $schemas = ['urn:ietf:params:scim:api:messages:2.0:Error'];
+    public const SCIM_SCHEMAS = ['urn:ietf:params:scim:api:messages:2.0:Error'];
 
     public function __construct(
         public readonly array $errors,
         public readonly int $status = 400,
         public readonly ?ScimBadRequestErrorType $type = null,
-        ?Throwable $previous = null
+        ?Throwable $previous = null,
     ) {
         $errorType = $type?->value ?? 'unknown';
 
@@ -30,7 +30,7 @@ class ScimErrorException extends Exception
     {
         return new JsonResponse([
             'errors' => $this->errors,
-            'schemas' => $this->schemas,
+            'schemas' => self::SCIM_SCHEMAS,
         ], $this->status);
     }
 }
