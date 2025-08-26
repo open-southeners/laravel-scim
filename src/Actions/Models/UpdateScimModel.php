@@ -22,6 +22,7 @@ final class UpdateScimModel
             ->authorize('scim.' . $model->getTable() . '.update', [get_class($data), $model]);
 
         event(event: 'scim.model.saving: ' . get_class($model), payload: [$model, $data]);
+        event(event: 'scim.model.updating: ' . get_class($model), payload: [$model, $data]);
 
         return $data;
     }
