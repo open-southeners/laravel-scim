@@ -23,13 +23,7 @@ final class CreateScimModel
         Gate::forUser($request->user())
             ->authorize('scim.'.$model->getTable().'.create', [$model]);
 
-        event(event: 'scim.model.saving: ' . get_class($model), payload: [$model, $data]);
         event(event: 'scim.model.creating: ' . get_class($model), payload: [$model, $data]);
-
-        $model->save();
-
-        event(event: 'scim.model.saved: ' . get_class($model), payload: [$model, $data]);
-        event(event: 'scim.model.created: ' . get_class($model), payload: [$model, $data]);
 
         return (new ScimObjectResource($mapper->newSchema($model)))
             ->toResponse($request)
