@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use OpenSoutheners\LaravelScim\Actions\Schemas\ExtractPropertiesFromSchema;
@@ -78,6 +79,56 @@ final class SchemaMapper implements Responsable
         return (new ScimObjectResource($this->schema::fromModel($this->query)))->toResponse($request);
     }
 
+    protected function setValueAt(array &$data, string $path, mixed $newValue, bool $replace = false): void
+    {
+        if ($pathFilter = Str::match('/\[(.*)\]/', $path)) {
+            $pathRoot = Str::before($path, '[');
+            $pathChildren = Str::afterLast($path, '.');
+            [$filterPath, $filterOperator, $filterQuery] = explode(' ', $pathFilter);
+
+            $lowerFilterQuery = Str::of($filterQuery)->between('"', '"')->lower()->value();
+
+            if (in_array($lowerFilterQuery, ['true', 'false'])) {
+                $filterQuery = $lowerFilterQuery === 'true' ? true : false;
+            }
+
+            $matches = 0;
+
+            foreach ($data[$pathRoot] as $key => $value) {
+                $filterableValue = data_get($value, $filterPath);
+
+                $matchResult = match ($filterOperator) {
+                    'eq' => $filterableValue === $filterQuery
+                };
+
+                if ($matchResult) {
+                    if (is_object($data[$pathRoot][$key])) {
+                        $objectClass = get_class($data[$pathRoot][$key]);
+
+                        $objectArray = $data[$pathRoot][$key]->toArray();
+
+                        $objectArray[$pathChildren] = $newValue;
+
+                        $data[$pathRoot][$key] = new $objectClass(...$objectArray);
+                    } else {
+                        $data[$pathRoot][$key][$pathChildren] = $newValue;
+                    }
+
+                    $matches++;
+                }
+            }
+
+            if ($matches === 0) {
+                $data[$pathRoot][] = [
+                    $filterPath => $filterQuery,
+                    $pathChildren => $newValue,
+                ];
+            }
+        } else {
+            data_set($data, $path, $newValue, $replace);
+        }
+    }
+
     protected function addValueToPath(array $data, string $path, mixed $value): array
     {
         $dataAtPath = data_get($data, $path, '');
@@ -90,14 +141,14 @@ final class SchemaMapper implements Responsable
             $dataAtPath .= $value;
         }
 
-        data_set($data, $path, $dataAtPath);
+        $this->setValueAt($data, $path, $dataAtPath);
 
         return $data;
     }
 
     protected function replaceValueInPath(array $data, string $path, mixed $value): array
     {
-        data_set($data, $path, $value);
+        $this->setValueAt($data, $path, $value, true);
 
         return $data;
     }
