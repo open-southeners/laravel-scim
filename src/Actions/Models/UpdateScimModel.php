@@ -15,12 +15,12 @@ final class UpdateScimModel
         string $schema,
         string $id,
     ) {
-        $data = $mapper->newSchema($request);
-
         $model = $mapper->getResult();
 
         Gate::forUser($request->user())
-            ->authorize('scim.' . $model->getTable() . '.update', [get_class($data), $model]);
+            ->authorize('scim.' . $model->getTable() . '.update', [$model]);
+
+        $data = $mapper->newSchema($request);
 
         event(event: 'scim.model.saving: ' . get_class($model), payload: [$model, $data]);
         event(event: 'scim.model.updating: ' . get_class($model), payload: [$model, $data]);

@@ -23,11 +23,11 @@ class ScimServiceProviderConfigControllerTest extends TestCase
                 'maxOperations' => 10,
             ],
             'filter' => [
-                'supported' => false,
-                'maxResults' => 10,
+                'supported' => true,
+                'maxResults' => 100,
             ],
             'changePassword' => [
-                'supported' => true,
+                'supported' => false,
             ],
             'sort' => [
                 'supported' => false,

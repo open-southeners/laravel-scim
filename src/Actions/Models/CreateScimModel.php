@@ -16,12 +16,12 @@ final class CreateScimModel
         Request $request,
         string $schema,
     ): JsonResponse {
+        Gate::forUser($request->user())
+            ->authorize('scim.'.$mapper->getModel()->getTable().'.create');
+
         $data = $mapper->newSchema($request);
 
         $model = $data->toModel();
-
-        Gate::forUser($request->user())
-            ->authorize('scim.'.$model->getTable().'.create', [$model]);
 
         event(event: 'scim.model.saving: ' . get_class($model), payload: [$model, $data]);
         event(event: 'scim.model.creating: ' . get_class($model), payload: [$model, $data]);

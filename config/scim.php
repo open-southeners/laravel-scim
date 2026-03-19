@@ -12,7 +12,7 @@ return [
     ],
 
     'filter' => [
-        'maxResults' => 10,
+        'maxResults' => 100,
     ],
 
 ];

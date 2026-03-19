@@ -11,9 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 use OpenSoutheners\LaravelScim\Enums\ScimAuthenticationScheme;
-use OpenSoutheners\LaravelScim\Enums\ScimBadRequestErrorType;
 use OpenSoutheners\LaravelScim\Exceptions\ScimErrorException;
-use OpenSoutheners\LaravelScim\Http\Resources\JsonScimErrorResource;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -68,18 +66,10 @@ class SCIM
 
             return new $class(...$validatedData);
         } catch (ValidationException $exception) {
-            $failedSchema = $class::schema();
-            $errorsBag = $exception->validator->errors();
-            $errors = [];
-
-            foreach ($exception->validator->failed() as $failedAttribute => $failures) {
-                $errors["{$failedSchema}:{$failedAttribute}"] = $errorsBag->get($failedAttribute);
-            }
-
             throw new ScimErrorException(
-                errors: $errors,
                 type: ScimBadRequestErrorType::InvalidSyntax,
-                previous: $exception
+                detail: $exception->getMessage(),
+                previous: $exception,
             );
         }
     }
@@ -117,17 +107,23 @@ class SCIM
             if ($request->routeIs('scim.v2.*')) {
                 return match (true) {
                     $e instanceof ScimErrorException => $response,
-                        $e instanceof AuthenticationException => new JsonResponse([
-                            'schemas' => ScimErrorException::SCIM_SCHEMAS,
-                            'status' => Response::HTTP_UNAUTHORIZED,
-                            'detail' => 'Not authenticated or authorized',
-                        ], Response::HTTP_UNAUTHORIZED),
-                        $e instanceof HttpException => new JsonResponse([
-                            'schemas' => ScimErrorException::SCIM_SCHEMAS,
-                            'status' => (string) $e->getStatusCode(),
-                            'detail' => $e->getMessage(),
-                        ], $e->getStatusCode()),
-                        default => $response,
+                    $e instanceof ValidationException => new JsonResponse([
+                        'schemas' => ScimErrorException::SCIM_SCHEMAS,
+                        'status' => '400',
+                        'scimType' => 'invalidValue',
+                        'detail' => $e->getMessage(),
+                    ], Response::HTTP_BAD_REQUEST),
+                    $e instanceof AuthenticationException => new JsonResponse([
+                        'schemas' => ScimErrorException::SCIM_SCHEMAS,
+                        'status' => (string) Response::HTTP_UNAUTHORIZED,
+                        'detail' => 'Not authenticated or authorized',
+                    ], Response::HTTP_UNAUTHORIZED),
+                    $e instanceof HttpException => new JsonResponse([
+                        'schemas' => ScimErrorException::SCIM_SCHEMAS,
+                        'status' => (string) $e->getStatusCode(),
+                        'detail' => $e->getMessage(),
+                    ], $e->getStatusCode()),
+                    default => $response,
                 };
             }
 

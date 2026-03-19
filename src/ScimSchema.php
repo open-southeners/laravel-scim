@@ -234,11 +234,21 @@ abstract readonly class ScimSchema implements Arrayable
 
             $paramName = $param->getName();
 
-            if (! property_exists($this, $paramName) || ! isset($this->{$paramName})) {
+            if (! property_exists($this, $paramName)) {
                 continue;
             }
 
-            $value = $this->{$paramName};
+            // Check if property is initialized (readonly properties may not be)
+            try {
+                $value = $this->{$paramName};
+            } catch (\Error) {
+                continue;
+            }
+
+            if ($value === null) {
+                continue;
+            }
+
             $relationName = $scimAttr->modelRelationship;
             $relation = $model->$relationName();
 

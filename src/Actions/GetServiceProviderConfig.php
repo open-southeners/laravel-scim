@@ -31,11 +31,11 @@ class GetServiceProviderConfig
                 'maxOperations' => config('scim.bulk.maxOperations', 10),
             ],
             'filter' => [
-                'supported' => false,
-                'maxResults' => config('scim.filter.maxResults', 10),
+                'supported' => true,
+                'maxResults' => config('scim.filter.maxResults', 100),
             ],
             'changePassword' => [
-                'supported' => true,
+                'supported' => false,
             ],
             'sort' => [
                 'supported' => false,

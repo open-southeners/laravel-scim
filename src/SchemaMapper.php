@@ -158,6 +158,67 @@ final class SchemaMapper implements Responsable
         return $data;
     }
 
+    protected function removeValueAtPath(array $data, string $path): array
+    {
+        // Handle filter expressions: members[value eq "123"]
+        if (preg_match('/^(\w+)\[(.+)\]$/', $path, $matches)) {
+            $attribute = $matches[1];
+            $filterExpression = $matches[2];
+
+            if (! isset($data[$attribute]) || ! is_array($data[$attribute])) {
+                return $data;
+            }
+
+            $data[$attribute] = array_values(array_filter(
+                $data[$attribute],
+                fn ($item) => ! $this->matchesFilterExpression($item, $filterExpression)
+            ));
+
+            return $data;
+        }
+
+        // Top-level attribute removal — set to empty array/null so schema
+        // constructors receive the value (important for relationship sync)
+        if (isset($data[$path]) && is_array($data[$path])) {
+            $data[$path] = [];
+        } else {
+            unset($data[$path]);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Check if an item matches a SCIM filter expression (e.g., 'value eq "123"').
+     */
+    protected function matchesFilterExpression(mixed $item, string $expression): bool
+    {
+        $parts = explode(' ', $expression, 3);
+
+        if (count($parts) < 3) {
+            return false;
+        }
+
+        [$filterPath, $operator, $filterValue] = $parts;
+
+        // Strip surrounding quotes
+        $filterValue = trim($filterValue, '"\'');
+
+        $itemValue = is_array($item)
+            ? data_get($item, $filterPath)
+            : (is_object($item) ? data_get($item, $filterPath) : null);
+
+        // Cast to string for comparison since SCIM values are typically strings
+        return match ($operator) {
+            'eq' => (string) $itemValue === $filterValue,
+            'ne' => (string) $itemValue !== $filterValue,
+            'co' => str_contains((string) $itemValue, $filterValue),
+            'sw' => str_starts_with((string) $itemValue, $filterValue),
+            'ew' => str_ends_with((string) $itemValue, $filterValue),
+            default => false,
+        };
+    }
+
     protected function extractDataFromPatchOp(Request $request): array
     {
         $data = $this->schema::fromModel($this->getResult())->toArray();
@@ -171,7 +232,7 @@ final class SchemaMapper implements Responsable
             $data = match ($attributeOperation) {
                 ScimPatchOp::Add => $this->addValueToPath($data, $operation['path'], $operation['value']),
                 ScimPatchOp::Replace => $this->replaceValueInPath($data, $operation['path'], $operation['value']),
-                ScimPatchOp::Remove => array_filter($data, fn ($key) => $key !== $operation['path'], ARRAY_FILTER_USE_KEY),
+                ScimPatchOp::Remove => $this->removeValueAtPath($data, $operation['path']),
             };
         }
 

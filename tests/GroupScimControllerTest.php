@@ -265,4 +265,60 @@ class GroupScimControllerTest extends TestCase
             'name' => 'Platform Engineering',
         ]);
     }
+
+    public function testGroupPatchRemoveMemberWithFilter()
+    {
+        $user1 = UserFactory::new()->create(['name' => 'Alice']);
+        $user2 = UserFactory::new()->create(['name' => 'Bob']);
+
+        $group = GroupFactory::new()->create(['name' => 'Engineering']);
+        $group->members()->attach([$user1->getKey(), $user2->getKey()]);
+
+        $this->assertDatabaseCount('group_user', 2);
+
+        $response = $this->patchJson(
+            route('scim.v2.SchemaActions.update', ['schema' => 'Groups', 'id' => $group->getKey()]),
+            [
+                'schemas' => ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+                'Operations' => [
+                    [
+                        'op' => 'remove',
+                        'path' => 'members[value eq "' . $user1->getKey() . '"]',
+                    ],
+                ],
+            ],
+        );
+
+        $response->assertOk();
+
+        // user1 removed, user2 remains
+        $this->assertDatabaseCount('group_user', 1);
+        $this->assertDatabaseMissing('group_user', ['user_id' => $user1->getKey()]);
+        $this->assertDatabaseHas('group_user', ['user_id' => $user2->getKey()]);
+    }
+
+    public function testGroupPatchRemoveAllMembers()
+    {
+        $user = UserFactory::new()->create(['name' => 'Alice']);
+
+        $group = GroupFactory::new()->create(['name' => 'Engineering']);
+        $group->members()->attach($user->getKey());
+
+        $response = $this->patchJson(
+            route('scim.v2.SchemaActions.update', ['schema' => 'Groups', 'id' => $group->getKey()]),
+            [
+                'schemas' => ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+                'Operations' => [
+                    [
+                        'op' => 'remove',
+                        'path' => 'members',
+                    ],
+                ],
+            ],
+        );
+
+        $response->assertOk();
+
+        $this->assertDatabaseCount('group_user', 0);
+    }
 }

@@ -13,24 +13,29 @@ class ScimErrorException extends Exception
     public const SCIM_SCHEMAS = ['urn:ietf:params:scim:api:messages:2.0:Error'];
 
     public function __construct(
-        public readonly array $errors,
-        public readonly int $status = 400,
         public readonly ?ScimBadRequestErrorType $type = null,
+        public readonly int $httpStatus = 400,
+        string $detail = '',
         ?Throwable $previous = null,
     ) {
-        $errorType = $type?->value ?? 'unknown';
+        if (! $detail) {
+            $errorType = $type?->value ?? 'unknown';
+            $detail = __("laravel-scim::errors.{$errorType}");
+        }
 
-        parent::__construct(message: __("laravel-scim::errors.{$errorType}"), previous: $previous);
+        parent::__construct(message: $detail, previous: $previous);
     }
 
     /**
-     * Render the exception as an HTTP response.
+     * Render the exception as an HTTP response (RFC 7644 §3.12).
      */
     public function render(Request $request): JsonResponse
     {
-        return new JsonResponse([
-            'errors' => $this->errors,
+        return new JsonResponse(array_filter([
             'schemas' => self::SCIM_SCHEMAS,
-        ], $this->status);
+            'status' => (string) $this->httpStatus,
+            'scimType' => $this->type?->value,
+            'detail' => $this->getMessage(),
+        ]), $this->httpStatus);
     }
 }
