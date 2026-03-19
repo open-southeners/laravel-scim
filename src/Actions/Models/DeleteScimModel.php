@@ -22,6 +22,10 @@ final class DeleteScimModel
 
         event(event: 'scim.model.deleting: ' . get_class($model), payload: [$model]);
 
+        $model->delete();
+
+        event(event: 'scim.model.deleted: ' . get_class($model), payload: [$model]);
+
         return response()->noContent();
     }
 }

@@ -3,11 +3,17 @@
 namespace OpenSoutheners\LaravelScim\Schemas;
 
 use Illuminate\Database\Eloquent\Builder;
+use OpenSoutheners\LaravelScim\GroupMember;
 use OpenSoutheners\LaravelScim\ScimSchema;
 
 readonly class GroupScimSchema extends ScimSchema
 {
     public ?string $displayName;
+
+    /**
+     * @var null|array<GroupMember>
+     */
+    public ?array $members;
 
     public static function getSchemaUrns(): array
     {

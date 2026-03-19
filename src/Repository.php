@@ -54,6 +54,23 @@ final class Repository
         return $this->schemas[$uri] ?? null;
     }
 
+    /**
+     * Get the model class for a given schema class.
+     *
+     * @param  class-string<ScimSchema>  $schema
+     * @return class-string<Model>|null
+     */
+    public function getModelForSchema(string $schema): ?string
+    {
+        foreach ($this->schemas as $entry) {
+            if ($entry['schema'] === $schema) {
+                return $entry['model'];
+            }
+        }
+
+        return null;
+    }
+
     public function all(): array
     {
         return $this->schemas;

@@ -134,14 +134,19 @@ final class SchemaMapper implements Responsable
         $dataAtPath = data_get($data, $path, '');
 
         if (is_array($dataAtPath) || $dataAtPath instanceof ArrayAccess) {
-            $dataAtPath[] = $value;
+            // Merge list items (e.g., adding members to a group)
+            if (is_array($value) && array_is_list($value)) {
+                $dataAtPath = array_merge($dataAtPath, $value);
+            } else {
+                $dataAtPath[] = $value;
+            }
         } else if (is_numeric($dataAtPath)) {
             $dataAtPath += $value;
         } else {
             $dataAtPath .= $value;
         }
 
-        $this->setValueAt($data, $path, $dataAtPath);
+        $this->setValueAt($data, $path, $dataAtPath, true);
 
         return $data;
     }
