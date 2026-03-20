@@ -1,0 +1,16 @@
+# Table of contents
+
+* [Introduction](README.md)
+* [Installation](installation.md)
+* [Configuration](configuration.md)
+* [Defining Schemas](defining-schemas.md)
+* [Registering Resources](registering-resources.md)
+* [Authorization](authorization.md)
+* [PATCH Operations](patch-operations.md)
+* [Filtering](filtering.md)
+* [Enterprise Extensions](enterprise-extensions.md)
+* [Events](events.md)
+* [Error Handling](error-handling.md)
+* [Discovery Endpoints](discovery-endpoints.md)
+* [Testing](testing.md)
+* [Upgrade Guide](upgrade-guide.md)
