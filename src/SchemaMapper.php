@@ -2,26 +2,22 @@
 
 namespace OpenSoutheners\LaravelScim;
 
-use ArrayAccess;
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use InvalidArgumentException;
-use OpenSoutheners\LaravelScim\Actions\Schemas\ExtractPropertiesFromSchema;
-use OpenSoutheners\LaravelScim\Attributes\ScimSchemaAttribute;
-use OpenSoutheners\LaravelScim\Enums\ScimAttributeMutability;
-use OpenSoutheners\LaravelScim\Enums\ScimAttributeUniqueness;
-use OpenSoutheners\LaravelScim\Enums\ScimPatchOp;
-use OpenSoutheners\LaravelScim\Http\Resources\ScimObjectResource;
-use OpenSoutheners\LaravelScim\Support\SCIM;
-use ReflectionClass;
 
+/**
+ * @deprecated Thin facade — delegates to SchemaQueryResolver, SchemaRequestValidator, SchemaPatchOperator.
+ */
 final class SchemaMapper implements Responsable
 {
+    protected SchemaQueryResolver $queryResolver;
+
+    protected SchemaRequestValidator $requestValidator;
+
+    protected SchemaPatchOperator $patchOperator;
+
     /**
      * @param class-string<ScimSchema> $schema
      */
@@ -29,271 +25,38 @@ final class SchemaMapper implements Responsable
         protected string $schema,
         protected Builder|Model|null $query = null,
     ) {
-        //
+        $this->queryResolver = new SchemaQueryResolver($schema, $query);
+        $this->requestValidator = new SchemaRequestValidator($schema, $query);
+        $this->patchOperator = new SchemaPatchOperator($schema, $query);
     }
 
     /**
-     * Get query for the single object of this SCIM schema.
-     *
      * @param  \Closure(\Illuminate\Database\Eloquent\Builder): void  $callback
      */
     public function applyQuery(\Closure $callback)
     {
-        $callback($this->query instanceof Model ? $this->query->newQuery() : $this->query);
+        $this->queryResolver->applyQuery($callback);
 
         return $this;
     }
 
     public function getResult(): Model
     {
-        if ($this->query instanceof Model) {
-            return $this->query;
-        }
-
-        return $this->query->first();
+        return $this->queryResolver->getResult();
     }
 
     public function getModel(): Model
     {
-        if ($this->query instanceof Model) {
-            return $this->query;
-        }
-
-        return $this->query->getModel();
+        return $this->queryResolver->getModel();
     }
 
     /**
-     * Get the response from the current query.
-     *
      * @param  \Illuminate\Http\Request  $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function toResponse($request)
     {
-        if ($this->query instanceof Builder) {
-            return ScimObjectResource::collection(
-                SCIM::paginateQuery($this->query, $request, $this->schema)
-            )->toResponse($request);
-        }
-
-        return (new ScimObjectResource($this->schema::fromModel($this->query)))->toResponse($request);
-    }
-
-    protected function setValueAt(array &$data, string $path, mixed $newValue, bool $replace = false): void
-    {
-        if ($pathFilter = Str::match('/\[(.*)\]/', $path)) {
-            $pathRoot = Str::before($path, '[');
-            $pathChildren = Str::afterLast($path, '.');
-            [$filterPath, $filterOperator, $filterQuery] = explode(' ', $pathFilter);
-
-            $lowerFilterQuery = Str::of($filterQuery)->between('"', '"')->lower()->value();
-
-            if (in_array($lowerFilterQuery, ['true', 'false'])) {
-                $filterQuery = $lowerFilterQuery === 'true' ? true : false;
-            }
-
-            $matches = 0;
-
-            foreach ($data[$pathRoot] as $key => $value) {
-                $filterableValue = data_get($value, $filterPath);
-
-                $matchResult = match ($filterOperator) {
-                    'eq' => $filterableValue === $filterQuery
-                };
-
-                if ($matchResult) {
-                    if (is_object($data[$pathRoot][$key])) {
-                        $objectClass = get_class($data[$pathRoot][$key]);
-
-                        $objectArray = $data[$pathRoot][$key]->toArray();
-
-                        $objectArray[$pathChildren] = $newValue;
-
-                        $data[$pathRoot][$key] = new $objectClass(...$objectArray);
-                    } else {
-                        $data[$pathRoot][$key][$pathChildren] = $newValue;
-                    }
-
-                    $matches++;
-                }
-            }
-
-            if ($matches === 0) {
-                $data[$pathRoot][] = [
-                    $filterPath => $filterQuery,
-                    $pathChildren => $newValue,
-                ];
-            }
-        } else {
-            data_set($data, $path, $newValue, $replace);
-        }
-    }
-
-    protected function addValueToPath(array $data, string $path, mixed $value): array
-    {
-        $dataAtPath = data_get($data, $path, '');
-
-        if (is_array($dataAtPath) || $dataAtPath instanceof ArrayAccess) {
-            // Merge list items (e.g., adding members to a group)
-            if (is_array($value) && array_is_list($value)) {
-                $dataAtPath = array_merge($dataAtPath, $value);
-            } else {
-                $dataAtPath[] = $value;
-            }
-        } else if (is_numeric($dataAtPath)) {
-            $dataAtPath += $value;
-        } else {
-            $dataAtPath .= $value;
-        }
-
-        $this->setValueAt($data, $path, $dataAtPath, true);
-
-        return $data;
-    }
-
-    protected function replaceValueInPath(array $data, string $path, mixed $value): array
-    {
-        $this->setValueAt($data, $path, $value, true);
-
-        return $data;
-    }
-
-    protected function removeValueAtPath(array $data, string $path): array
-    {
-        // Handle filter expressions: members[value eq "123"]
-        if (preg_match('/^(\w+)\[(.+)\]$/', $path, $matches)) {
-            $attribute = $matches[1];
-            $filterExpression = $matches[2];
-
-            if (! isset($data[$attribute]) || ! is_array($data[$attribute])) {
-                return $data;
-            }
-
-            $data[$attribute] = array_values(array_filter(
-                $data[$attribute],
-                fn ($item) => ! $this->matchesFilterExpression($item, $filterExpression)
-            ));
-
-            return $data;
-        }
-
-        // Top-level attribute removal — set to empty array/null so schema
-        // constructors receive the value (important for relationship sync)
-        if (isset($data[$path]) && is_array($data[$path])) {
-            $data[$path] = [];
-        } else {
-            unset($data[$path]);
-        }
-
-        return $data;
-    }
-
-    /**
-     * Check if an item matches a SCIM filter expression (e.g., 'value eq "123"').
-     */
-    protected function matchesFilterExpression(mixed $item, string $expression): bool
-    {
-        $parts = explode(' ', $expression, 3);
-
-        if (count($parts) < 3) {
-            return false;
-        }
-
-        [$filterPath, $operator, $filterValue] = $parts;
-
-        // Strip surrounding quotes
-        $filterValue = trim($filterValue, '"\'');
-
-        $itemValue = is_array($item)
-            ? data_get($item, $filterPath)
-            : (is_object($item) ? data_get($item, $filterPath) : null);
-
-        // Cast to string for comparison since SCIM values are typically strings
-        return match ($operator) {
-            'eq' => (string) $itemValue === $filterValue,
-            'ne' => (string) $itemValue !== $filterValue,
-            'co' => str_contains((string) $itemValue, $filterValue),
-            'sw' => str_starts_with((string) $itemValue, $filterValue),
-            'ew' => str_ends_with((string) $itemValue, $filterValue),
-            default => false,
-        };
-    }
-
-    protected function extractDataFromPatchOp(Request $request): array
-    {
-        $data = $this->schema::fromModel($this->getResult())->toArray();
-
-        $operations = $request->input('Operations');
-
-        foreach ($operations as $operation) {
-            // TODO: Implement add operation with model data recovery (addition / removal)
-            $attributeOperation = ScimPatchOp::from(strtolower($operation['op']));
-
-            $data = match ($attributeOperation) {
-                ScimPatchOp::Add => $this->addValueToPath($data, $operation['path'], $operation['value']),
-                ScimPatchOp::Replace => $this->replaceValueInPath($data, $operation['path'], $operation['value']),
-                ScimPatchOp::Remove => $this->removeValueAtPath($data, $operation['path']),
-            };
-        }
-
-        return $data;
-    }
-
-    protected function fromRequest(Request $request): ScimSchema
-    {
-        $attributes = app(ExtractPropertiesFromSchema::class)->handle($this->schema);
-
-        $rulesFromSchema = [];
-
-        $data = $request->input();
-
-        $isPatchOp = in_array('urn:ietf:params:scim:api:messages:2.0:PatchOp', $request->input('schemas', []));
-
-        if ($isPatchOp) {
-            $data = $this->extractDataFromPatchOp($request);
-        }
-
-        foreach ($attributes as $attribute) {
-            if ($attribute['mutability'] === ScimAttributeMutability::ReadOnly->value) {
-                continue;
-            }
-
-            $rulesFromSchema[$attribute['name']][] = !$isPatchOp && $attribute['required'] ? 'required' : 'nullable';
-
-            $rulesFromSchema[$attribute['name']][] = match ($attribute['type']) {
-                'string' => 'string',
-                'integer' => 'integer',
-                'boolean' => 'boolean',
-                'dateTime' => 'date',
-                'decimal' => 'numeric',
-                'binary' => 'file',
-                'reference' => 'exists',
-                'complex' => 'array',
-                default => throw new InvalidArgumentException('Invalid type: ' . $attribute['type']),
-            };
-
-            if ($attribute['uniqueness'] === ScimAttributeUniqueness::Server->value) {
-                $reflectionClass = new ReflectionClass($this->schema);
-
-                $filteredParameters = array_filter(
-                    $reflectionClass->getConstructor()->getParameters(),
-                    fn ($param) => $param->getName() === $attribute['name']
-                );
-
-                $propertyAttribute = reset($filteredParameters)->getAttributes(ScimSchemaAttribute::class);
-
-                $propertyAttribute = reset($propertyAttribute)->newInstance();
-
-                $rulesFromSchema[$attribute['name']][] = Rule::unique(
-                    $this->query instanceof Builder ? $this->query->from : $this->query->getTable(),
-                    $propertyAttribute->modelAttribute
-                )->ignore($this->getResult()->id);
-            }
-        }
-
-        $validatedData = Validator::validate($data, $rulesFromSchema);
-
-        return new $this->schema(...$validatedData);
+        return $this->queryResolver->toResponse($request);
     }
 
     public function getSchema(): string
@@ -304,7 +67,7 @@ final class SchemaMapper implements Responsable
     public function newSchema(Request|Model $input): ScimSchema
     {
         if ($input instanceof Request) {
-            return $this->fromRequest($input);
+            return $this->requestValidator->fromRequest($input, $this->patchOperator);
         }
 
         return $this->schema::fromModel($input);

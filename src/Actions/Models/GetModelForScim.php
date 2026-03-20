@@ -4,7 +4,6 @@ namespace OpenSoutheners\LaravelScim\Actions\Models;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use OpenSoutheners\LaravelScim\Repository;
 use OpenSoutheners\LaravelScim\SchemaMapper;
 
@@ -17,7 +16,7 @@ final class GetModelForScim
         string $id,
         Repository $scim,
     ) {
-        $schemaClass = $scim->getBySuffix(Str::singular($schema))['schema'];
+        $schemaClass = $scim->getByRouteSlug($schema)['schema'];
 
         Gate::forUser($request->user())
             ->authorize('scim.' . $mapper->getModel()->getTable() . '.view', [$id]);

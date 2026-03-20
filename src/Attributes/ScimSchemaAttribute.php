@@ -19,6 +19,7 @@ class ScimSchemaAttribute implements Arrayable
         public ?string $modelAttribute = null,
         public ?string $modelRelationship = null,
         public ?string $relationshipValueKey = null,
+        public ?string $extensionUrn = null,
     ) {
         //
     }

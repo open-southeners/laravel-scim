@@ -15,4 +15,6 @@ return [
         'maxResults' => 100,
     ],
 
+    'external_id_column' => 'external_id',
+
 ];

@@ -9,11 +9,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use OpenSoutheners\LaravelScim\Attributes\ScimSchemaAttribute;
-use OpenSoutheners\LaravelScim\Enums\ScimAttributeMutability;
-use ReflectionClass;
-use Symfony\Component\PropertyInfo\Extractor\PhpStanExtractor;
-use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
-use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
 use Symfony\Component\TypeInfo\Type;
 
 abstract readonly class ScimSchema implements Arrayable
@@ -32,6 +27,61 @@ abstract readonly class ScimSchema implements Arrayable
 
     abstract public static function query(Builder $query): void;
 
+    /**
+     * Get the database column name for the SCIM externalId attribute.
+     */
+    public static function getExternalIdColumn(): string
+    {
+        return config('scim.external_id_column', 'external_id');
+    }
+
+    /**
+     * Create a schema instance with type coercion from an associative or positional array.
+     *
+     * @param  array  $args  Named or positional arguments
+     */
+    public static function create(array $args): static
+    {
+        $metadata = SchemaMetadataCache::for(static::class);
+        $coerced = [];
+
+        foreach ($metadata->parameters as $paramMeta) {
+            // Support both named and positional args
+            $value = $args[$paramMeta->name] ?? $args[$paramMeta->position] ?? null;
+
+            $parentType = $paramMeta->parentType;
+
+            if ($parentType instanceof Type\NullableType) {
+                $parentType = $parentType->getWrappedType();
+            }
+
+            if ($parentType instanceof Type\CollectionType && is_array($value)) {
+                $collectionValueType = (string) $parentType->getCollectionValueType();
+
+                $collectedValue = [];
+
+                foreach ($value as $item) {
+                    if ($parentType->getCollectionValueType()->accepts($item)) {
+                        $collectedValue[] = $item;
+                    } elseif (is_array($item)) {
+                        $collectedValue[] = new $collectionValueType(...$item);
+                    } else {
+                        $collectedValue[] = $item;
+                    }
+                }
+
+                $value = $collectedValue;
+            }
+
+            $coerced[$paramMeta->name] = $value;
+        }
+
+        return new static(...$coerced);
+    }
+
+    /**
+     * @deprecated Use promoted properties with create() instead.
+     */
     protected function fill(...$argValues): void
     {
         // Handle being called with a single array (e.g., $this->fill(func_get_args()))
@@ -39,34 +89,30 @@ abstract readonly class ScimSchema implements Arrayable
             $argValues = $argValues[0];
         }
 
-        $reflectionClass = new ReflectionClass($this);
+        $metadata = SchemaMetadataCache::for(static::class);
 
-        $phpStanExtractor = new PhpStanExtractor();
-        $reflectionExtractor = new ReflectionExtractor();
+        // Skip if properties already initialized (promoted properties or create() path)
+        $firstParam = $metadata->parameters[array_key_first($metadata->parameters)] ?? null;
+        if ($firstParam && property_exists($this, $firstParam->name)) {
+            try {
+                $this->{$firstParam->name};
+                return; // Already initialized
+            } catch (\Error) {
+                // Not initialized — proceed with fill
+            }
+        }
 
-        $extractor = new PropertyInfoExtractor(
-            [$reflectionExtractor],
-            [$phpStanExtractor, $reflectionExtractor],
-        );
+        foreach ($metadata->parameters as $paramMeta) {
+            $value = $argValues[$paramMeta->position] ?? null;
 
-        $args = $reflectionClass->getConstructor()->getParameters();
-
-        foreach ($args as $index => $arg) {
-            $value = $argValues[$index] ?? null;
-
-            $parentType = $extractor->getType(
-                $reflectionClass->getParentClass()->getName(),
-                $arg->getName(),
-                [$arg->getName() => $value]
-            );
+            $parentType = $paramMeta->parentType;
 
             if ($parentType instanceof Type\NullableType) {
                 $parentType = $parentType->getWrappedType();
             }
 
-            // TODO: Accepts isn't taking in mind the collected types (generics)
             if (!$parentType || ($parentType->accepts($value) && !$parentType instanceof Type\CollectionType)) {
-                $this->{$arg->getName()} = $value;
+                $this->{$paramMeta->name} = $value;
 
                 continue;
             }
@@ -89,7 +135,7 @@ abstract readonly class ScimSchema implements Arrayable
                 $value = $collectedValue;
             }
 
-            $this->{$arg->getName()} = $value;
+            $this->{$paramMeta->name} = $value;
         }
     }
 
@@ -98,16 +144,13 @@ abstract readonly class ScimSchema implements Arrayable
      */
     public static function fromModel(Model $model): static
     {
-        $reflectionClass = new ReflectionClass(static::class);
-        $params = $reflectionClass->getConstructor()?->getParameters() ?? [];
+        $metadata = SchemaMetadataCache::for(static::class);
 
         $args = [];
 
-        foreach ($params as $param) {
-            $attributes = $param->getAttributes(ScimSchemaAttribute::class);
-            $scimAttr = $attributes ? $attributes[0]->newInstance() : null;
-
-            if ($scimAttr?->modelRelationship) {
+        foreach ($metadata->parameters as $paramMeta) {
+            if ($paramMeta->isRelationship) {
+                $scimAttr = $paramMeta->scimAttribute;
                 $relationName = $scimAttr->modelRelationship;
                 $model->loadMissing($relationName);
                 $related = $model->getRelation($relationName);
@@ -115,8 +158,6 @@ abstract readonly class ScimSchema implements Arrayable
                 if ($related instanceof \Illuminate\Database\Eloquent\Collection) {
                     $valueKey = $scimAttr->relationshipValueKey ?? $model->$relationName()->getRelated()->getKeyName();
 
-                    // Map related models to arrays with 'value' and 'display' keys
-                    // so fill() can construct value objects (GroupMember, etc.)
                     $args[] = $related->map(function ($item) use ($valueKey) {
                         return [
                             'value' => (string) $item->getAttribute($valueKey),
@@ -127,12 +168,12 @@ abstract readonly class ScimSchema implements Arrayable
                     $args[] = $related;
                 }
             } else {
-                $modelAttribute = $scimAttr?->modelAttribute ?? $param->getName();
+                $modelAttribute = $paramMeta->scimAttribute?->modelAttribute ?? $paramMeta->name;
                 $args[] = $model->getAttribute($modelAttribute);
             }
         }
 
-        $instance = new static(...$args);
+        $instance = static::create($args);
 
         $instance->setBaseProperties($model);
 
@@ -145,7 +186,7 @@ abstract readonly class ScimSchema implements Arrayable
     protected function setBaseProperties(Model $model): void
     {
         $this->id = (string) $model->getKey();
-        $this->externalId = $model->getAttribute('external_id');
+        $this->externalId = $model->getAttribute(static::getExternalIdColumn());
         $this->meta = new SchemaMeta(
             url: url("scim/v2/{$this->getSchemaName()}s/{$model->getKey()}"),
             created: $model->getAttribute('created_at')
@@ -181,36 +222,20 @@ abstract readonly class ScimSchema implements Arrayable
      */
     public function applyToModel(Model $model): Model
     {
-        $reflectionClass = new ReflectionClass(static::class);
-        $params = $reflectionClass->getConstructor()?->getParameters() ?? [];
+        $metadata = SchemaMetadataCache::for(static::class);
 
-        foreach ($params as $param) {
-            $attributes = $param->getAttributes(ScimSchemaAttribute::class);
-            $scimAttr = $attributes ? $attributes[0]->newInstance() : null;
-
-            // Skip relationship attributes — handled by syncRelationships
-            if ($scimAttr?->modelRelationship) {
+        foreach ($metadata->writableParams as $paramMeta) {
+            if (! property_exists($this, $paramMeta->name) || ! isset($this->{$paramMeta->name})) {
                 continue;
             }
 
-            // Skip read-only attributes
-            if ($scimAttr?->mutability === ScimAttributeMutability::ReadOnly) {
-                continue;
-            }
-
-            $paramName = $param->getName();
-
-            if (! property_exists($this, $paramName) || ! isset($this->{$paramName})) {
-                continue;
-            }
-
-            $modelAttribute = ($scimAttr ? $scimAttr->modelAttribute : null) ?? $paramName;
-            $model->setAttribute($modelAttribute, $this->{$paramName});
+            $modelAttribute = $paramMeta->scimAttribute?->modelAttribute ?? $paramMeta->name;
+            $model->setAttribute($modelAttribute, $this->{$paramMeta->name});
         }
 
         // Set externalId if provided
         if (isset($this->externalId) && $this->externalId !== null) {
-            $model->setAttribute('external_id', $this->externalId);
+            $model->setAttribute(static::getExternalIdColumn(), $this->externalId);
         }
 
         return $model;
@@ -221,18 +246,10 @@ abstract readonly class ScimSchema implements Arrayable
      */
     public function syncRelationships(Model $model): void
     {
-        $reflectionClass = new ReflectionClass(static::class);
-        $params = $reflectionClass->getConstructor()?->getParameters() ?? [];
+        $metadata = SchemaMetadataCache::for(static::class);
 
-        foreach ($params as $param) {
-            $attributes = $param->getAttributes(ScimSchemaAttribute::class);
-            $scimAttr = $attributes ? $attributes[0]->newInstance() : null;
-
-            if (! $scimAttr?->modelRelationship) {
-                continue;
-            }
-
-            $paramName = $param->getName();
+        foreach ($metadata->relationshipParams as $paramMeta) {
+            $paramName = $paramMeta->name;
 
             if (! property_exists($this, $paramName)) {
                 continue;
@@ -249,6 +266,7 @@ abstract readonly class ScimSchema implements Arrayable
                 continue;
             }
 
+            $scimAttr = $paramMeta->scimAttribute;
             $relationName = $scimAttr->modelRelationship;
             $relation = $model->$relationName();
 
@@ -281,9 +299,9 @@ abstract readonly class ScimSchema implements Arrayable
     public function toArray()
     {
         $result = [];
-        $reflector = new ReflectionClass($this);
+        $metadata = SchemaMetadataCache::for(static::class);
 
-        foreach ($reflector->getProperties() as $property) {
+        foreach ($metadata->properties as $property) {
             if (!$property->isInitialized($this)) {
                 continue;
             }
@@ -303,7 +321,15 @@ abstract readonly class ScimSchema implements Arrayable
                 $propertyValue = array_map(fn ($item) => $item->toArray(), $propertyValue);
             }
 
-            $result[$property->getName()] = $propertyValue;
+            // Check for extension URN — group under namespace key
+            $attrs = $property->getAttributes(ScimSchemaAttribute::class);
+            $scimAttr = $attrs ? $attrs[0]->newInstance() : null;
+
+            if ($scimAttr?->extensionUrn) {
+                $result[$scimAttr->extensionUrn][$property->getName()] = $propertyValue;
+            } else {
+                $result[$property->getName()] = $propertyValue;
+            }
         }
 
         $result['schemas'] = static::getSchemaUrns();

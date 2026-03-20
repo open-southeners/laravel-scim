@@ -3,10 +3,18 @@
 namespace OpenSoutheners\LaravelScim;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use OpenSoutheners\LaravelScim\Support\SCIM;
 
 final class Repository
 {
+    /**
+     * Route slug → schema URI lookup.
+     *
+     * @var array<string, string>
+     */
+    protected array $routeNames = [];
+
     /**
      * Create a new configuration repository.
      *
@@ -32,6 +40,25 @@ final class Repository
             'schema' => $schema,
             'model' => $model,
         ];
+
+        // Auto-register route slug (e.g., 'users' => urn)
+        $this->routeNames[strtolower(Str::plural(class_basename($model)))] = $uri;
+    }
+
+    /**
+     * Resolve a route slug (e.g., "Users") to a schema entry.
+     * Case-insensitive exact match on route slug, falls back to getBySuffix for backward compatibility.
+     */
+    public function getByRouteSlug(string $slug): ?array
+    {
+        $key = strtolower($slug);
+
+        if (isset($this->routeNames[$key])) {
+            return $this->schemas[$this->routeNames[$key]] ?? null;
+        }
+
+        // Backward compatibility: try suffix-based resolution
+        return $this->getBySuffix(Str::singular($slug));
     }
 
     public function hasModel(string $model): bool

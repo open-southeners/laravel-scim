@@ -8,7 +8,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use OpenSoutheners\LaravelScim\Exceptions\ScimErrorException;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,8 +39,8 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->bind(SchemaMapper::class, function (Application $app) {
             $request = $app->make(Request::class);
 
-            $schema = $app->make(Repository::class)->getBySuffix(
-                Str::singular($request->route()->parameter('schema', ''))
+            $schema = $app->make(Repository::class)->getByRouteSlug(
+                $request->route()->parameter('schema', '')
             );
 
             // Maybe useless...
